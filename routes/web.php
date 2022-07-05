@@ -31,8 +31,9 @@ use App\Http\Controllers\Department\QuickComplaintController;
 use App\Http\Controllers\ServiceManagement\ServiceController;
 use App\Http\Controllers\SocietyManagement\SocietyController;
 use App\Http\Controllers\UserManagement\PermissionController;
-use App\Http\Controllers\UserManagement\UserProfileController;
+use App\Http\Controllers\UserManagement\DesginationController;
 // use App\Http\Controllers\DealsDiscounts\DealCategoryController;
+use App\Http\Controllers\UserManagement\UserProfileController;
 use App\Http\Controllers\SocietyManagement\SocietySosController;
 use App\Http\Controllers\DealsDiscounts\DealsDiscountsController;
 use App\Http\Controllers\ServiceManagement\ServiceTypeController;
@@ -65,6 +66,7 @@ Auth::routes();
 // });
 
 Route::post('customlogin',[UserLoginController::class, 'Loginuser'])->name('customlogin');	
+Route::post('designation',[DesginationController::class, 'store'])->name('designation.store');	
 Route::get('/send-signup-otp/{to}/sms/{pin}', [HomeController::class, 'smsApi'])->name('smsApi');
 Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 	Route::get('/', [HomeController::class, 'index'])->name('home.index');

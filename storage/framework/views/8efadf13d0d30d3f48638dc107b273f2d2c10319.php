@@ -1,5 +1,23 @@
 <?php $__env->startSection('content'); ?>
 
+<style>
+	.dataTables_filter {
+		margin-top: -56px !important;
+	}
+
+	.dataTables_wrapper .dataTables_processing {
+		background: #1c5b90;
+		border: 1px solid #1c5b90;
+		border-radius: 3px;
+		color: #fff;
+	}
+
+	.kt-avatar .kt-avatar__holder {
+		width: 70px !important;
+		height: 60px !important;
+	}
+</style>
+
 <div class="kt-content kt-grid__item kt-grid__item--fluid kt-grid kt-grid--hor" id="kt_content">
 	<!-- begin:: Content Head -->
 	<div class="kt-subheader kt-grid__item" id="kt_subheader">
@@ -14,37 +32,6 @@
 	<!-- end:: Content Head -->
 	<!-- begin:: Content -->
 	<div class="kt-container  kt-container--fluid  kt-grid__item kt-grid__item--fluid">
-		<?php
-		// filter department from departments array
-		$search_society_id = request()->search_society_id ?? '';
-		if($search_society_id !='all' AND $search_society_id !=''){
-		$residents = $residents->where('society_id',$search_society_id);
-		}else{
-		$residents = $residents;
-		}
-		?>
-		<form action="" method="get">
-			<div class="row alert alert-light alert-elevate" role="alert">
-				<div class="col-md-2"></div>
-				<div class="alert-icon"><i class="flaticon-search kt-font-brand"></i></div>
-				<div class="form-group validated col-sm-6 col-xs-6">
-					<label class="form-control-label">Select Society</label>
-					<select class="form-control kt-selectpicker" name="search_society_id" data-live-search="true">
-						<option selected disabled value=""> Select Society </option>
-						<option <?php if($search_society_id=='all' ): ?> selected <?php endif; ?> value="all"> All </option>
-						<?php $__currentLoopData = $societies; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $society): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-						<option <?php if($search_society_id==$society->id): ?>
-							selected
-							<?php endif; ?> value="<?php echo e($society->id); ?>"> <?php echo e($society->name); ?> [<?php echo e($society->code); ?>]</option>
-						<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-					</select>
-				</div>
-				<div class="kt-section__content kt-section__content--solid mt-3 pt-3">
-					<button type="submit" class="btn btn-primary btn-sm mt-1">Search</button>
-				</div>
-
-			</div>
-		</form>
 
 		<div class="kt-portlet kt-portlet--mobile">
 			<div class="kt-portlet__head kt-portlet__head--lg">
@@ -72,28 +59,58 @@
 			<div class="kt-portlet__body">
 
 				<!--begin: Datatable -->
-				<table class="table table-striped table-hover table-checkable kt_table_11">
+				<table class="table table-striped table-hover table-checkable" id="ResidentYajraTable">
 					<thead>
+						<tr>
+							<td class="form-group" colspan="4">
+								<label class="form-control-label">Search <b>Society</b></label>
+								<select class="form-control filter-select" data-column="3">
+									<option selected disabled value=""> Select Society </option>
+									<option value="all"> All </option>
+									<?php $__currentLoopData = $societies; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $society): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+									<option value="<?php echo e($society->name); ?>"> <?php echo e($society->name); ?> [<?php echo e($society->code); ?>]
+									</option>
+									<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+									<option value="09"> Pin Verified </option>
+								</select>
+							</td>
+							<td class="form-group" colspan="4">
+								<label class="form-control-label">Search <b>Pin Status</b></label>
+								<select class="form-control filter-select" data-column="11">
+									<option selected disabled> Select Status </option>
+									<option value="all"> All </option>
+									<option value="1"> Pin Verified </option>
+									<option value="0"> Pin Not Verified </option>
+							</td>
+						</tr>
 						<tr>
 							<th>#</th>
 							<th>Image</th>
 							<th> Name </th>
 							<th> Society </th>
+							<th style="display:none;"> Contact No </th>
+							<th style="display:none;"> Email </th>
+							<th style="display:none;"> Sector </th>
+							<th style="display:none;"> Address </th>
 							<th> SMS Pin </th>
 							<th> Email Pin </th>
 							<th> Otp Status </th>
+							<th style="display:none;"> Otp Status </th>
+							<th> Membership Id </th>
 							<th>Actions</th>
 						</tr>
 					</thead>
 					<tbody>
 						<?php $__currentLoopData = $residents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key=>$user): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 						<tr>
-							<td><?php echo e(++$key); ?> - <?php echo e($user->id); ?></td>
+							<td><?php echo e(++$key); ?></td>
 							<td>
 								<div class="kt-avatar kt-avatar--outline">
-									<div class="kt-avatar__holder"
-										style="<?php if($user->image !=''): ?> background-image: url(<?php echo e(asset('storage/residents/'.$user->image)); ?>); <?php endif; ?>">
-									</div>
+									<a href="<?php echo e(asset('storage/residents/'.$user->image)); ?>" target="_blank">
+										<div class="kt-avatar__holder"
+											style="<?php if($user->image !=''): ?> background-image: url(<?php echo e(asset('storage/residents/'.$user->image)); ?>); <?php endif; ?>">
+										</div>
+									</a>
 									<label class="kt-avatar__upload OpenResidentImageModal"
 										resident_id="<?php echo e($user->id ?? 0); ?>" resident_name="<?php echo e($user->name ?? ''); ?>"
 										title="Click to Update Image">
@@ -102,8 +119,13 @@
 								</div>
 							<td><?php echo e($user->name); ?></td>
 							<td><?php echo e($user->society->name); ?></td>
+							<td style="display:none;"><?php echo e($user->mobile_number); ?></td>
+							<td style="display:none;"><?php echo e($user->email); ?></td>
+							<td style="display:none;"><?php echo e($user->sector->sector_name ?? ''); ?></td>
+							<td style="display:none;"><?php echo e($user->address); ?></td>
 							<td><b><?php echo e($user->m_pin); ?></b></td>
 							<td><b class="text-danger"><?php echo e($user->e_pin); ?></b></td>
+
 							<td>
 								<?php if($user->pin_verified == 1): ?>
 								<a href="#" class="btn btn-brand btn-elevate btn-icon-sm btn-sm"> <i
@@ -112,10 +134,17 @@
 								<b> Pin is Not Verified </b>
 								<?php endif; ?>
 							</td>
+							<td style="display:none;"><?php echo e($user->pin_verified); ?></td>
+							<td><?php echo e($user->membership_id ?? ''); ?></td>
 							<td>
 								<?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('create-resident-management')): ?>
 								<a href="<?php echo e(route('residentdata.edit', $user->id)); ?>" class="text-warning"> <i
 										class="fa fa-edit fa-lg" title="Edit Resident"></i> </a> &nbsp;
+								<?php endif; ?>
+
+								<?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('view-resident-management')): ?>
+								<a href="<?php echo e(route('residentdata.show', $user->id)); ?>" class="text-success"> <i
+										class="fa fa-eye fa-lg" title="View Detail"></i> </a> &nbsp;
 								<?php endif; ?>
 								<?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('delete-resident-management')): ?>
 								<a href="<?php echo e(route('residentdata.destroy', $user->id)); ?>"
@@ -230,12 +259,54 @@
 
 <script src="<?php echo e(asset('assets/js/pages/crud/datatables/extensions/buttons.js?v=1')); ?> "></script>
 <script src="<?php echo e(asset('assets/plugins/custom/datatables/datatables.bundle.js?v=1')); ?>" type="text/javascript"></script>
-<script src="<?php echo e(asset('js/ssm_datatable.js?v=1.0')); ?>" type="text/javascript"></script>
-
 <script src="<?php echo e(asset('assets/js/pages/crud/forms/widgets/bootstrap-select.js?v=1.0')); ?>" type="text/javascript">
 </script>
 
 <script>
+	var DTable =  $('#ResidentYajraTable').DataTable({
+    serverside: true,
+    processing: true,
+    info: true,
+    // dom: 'Bfrtip', // not showing length menu
+    dom: 'Blfrtip', // with length menu
+    "pageLength":10,
+    "lengthMenu":[[10,30,50,-1],[10,30,50,"all"]],
+    buttons: [
+        'copy',
+        {
+            extend: 'excel',
+            title: 'Residents',
+            exportOptions: {
+                columns: [2,3,4,5,6,7]
+            },
+        },
+        {
+            extend: 'pdf',
+            title: 'Residents',
+            exportOptions: {
+                columns: [2,3,4,5,6,7]
+            },
+        },
+        {
+            extend: 'print',
+            title: 'Residents',
+            exportOptions: {
+                columns: [2,3,4,5,6,7]
+            },
+        }
+    ],
+});
+
+    $(".filter-select").change(function () {
+        if($(this).val() == 'all'){
+            DTable.column($(this).data('column')).search('').draw();
+        }else{
+            DTable.column($(this).data('column')).search($(this).val()).draw();
+        }
+    });
+        
+        
+
 	//Reset input file in modal
 	$('input[type="file"][name="image_file"]').val('');
         //Image preview on upload time

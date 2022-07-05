@@ -44,17 +44,21 @@ class ComplaintController extends Controller
             $societies = Society::whereHas('complaints')->get();
             $subdepartments = SubDepartment::whereHas('supervisors')->get(['id','name','society_id','department_id','ta_time']);
 
+            $forward_departments = Department::with('subdepartments')->get();
+
         }elseif($user_detail->user_level_id == 2){
             // Admin Only Saw All His Societies Complaints
             $admin_soctities = $this->adminSocieties();
             $societies = Society::whereHas('complaints')->whereIn('id', $admin_soctities)->get();
             $departments = Department::whereIn('society_id', $admin_soctities)->with('subdepartments')->get();
             $subdepartments = SubDepartment::whereHas('supervisors')->whereIn('society_id',$this->adminSocieties())->get(['id','name','society_id','department_id','ta_time']);
+            $forward_departments = Department::whereIn('society_id', $admin_soctities)->with('subdepartments')->get();
 
         }else if($user_detail->user_level_id == 3){
             $societies = Society::whereHas('complaints')->where('id', $user_detail->society_id)->get();
             $departments = Department::whereHas('complaints')->whereIn('id', $this->hodDepartments())->with('subdepartments')->get();
             $subdepartments = SubDepartment::whereHas('supervisors')->where('society_id', $user_detail->society_id)->whereIn('department_id',$this->hodDepartments())->get(['id','name','society_id','department_id']);
+            $forward_departments = Department::where('society_id', $user_detail->society_id)->with('subdepartments')->get();
 
         }elseif($user_detail->user_level_id == 4){
             $societies = Society::whereHas('complaints')->where('id', $user_detail->society_id)->get();
@@ -64,16 +68,19 @@ class ComplaintController extends Controller
             })->whereHas('hod')->with('subdepartments')->get();
             // dd($this->managerSubDepartments());
             $subdepartments = SubDepartment::whereHas('supervisors')->where('society_id', $user_detail->society_id)->whereIn('id',$this->managerSubDepartments())->get(['id','name','society_id']);
+            $forward_departments = Department::where('society_id', $user_detail->society_id)->with('subdepartments')->get();
 
         }elseif($user_detail->user_level_id >= 6){
             $departments = Department::whereHas('complaints')->where('society_id', $user_detail->society_id)->with('subdepartments')->get();
             $subdepartments = SubDepartment::whereHas('supervisors')->where('society_id', $user_detail->society_id)->get(['id','name','society_id']);
             $societies = Society::whereHas('complaints')->where('id', $user_detail->society_id)->get();
+            $forward_departments = Department::where('society_id', $user_detail->society_id)->with('subdepartments')->get();
         }else{
             $complaints = collect();
             $departments = collect();
             $subdepartments = collect();
             $societies = collect();
+            $forward_departments = collect();
         }
         // Hod And Manager Saw All Their Department and submdepartmnet complaint
     	$subdepartments_ids = array();
@@ -89,7 +96,7 @@ class ComplaintController extends Controller
             $subdep_sups = [];
         }
         // dd($complaints->toArray());
-        return view('complaints.index', compact('subdep_sups','departments','societies'));
+        return view('complaints.index', compact('subdep_sups','departments','societies','forward_departments'));
     }
 
     public function getComplaintsWithRefresh()
@@ -141,7 +148,7 @@ class ComplaintController extends Controller
                 $button = '<button type="button"
                 class="btn btn-'.$row["status_color"].' btn-sm"> '.$row["complaint_status"].'</button>';
 
-                if($user_level_id < 5){
+                if($user_level_id < 6){
                     if($row["complaint_status"] == "in_process" OR
                     $row["complaint_status"] == "open" OR $row["complaint_status"]
                     == "re_assign"){
@@ -459,7 +466,6 @@ class ComplaintController extends Controller
             'working_status' => 'required',
             'comments' => 'required',
         ]);
-
         if($validator->fails()){
             return response()->json($validator->errors()->toJson(), 401);
         }
@@ -471,7 +477,6 @@ class ComplaintController extends Controller
             $user_name = $web_user->name;
         }else{
             $api_user = Auth::guard('api')->user();
-
             $userId = $api_user->id;
             $user_name = $api_user->name;
         }

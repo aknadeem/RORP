@@ -27,31 +27,22 @@ class ResidentDataController extends Controller
         }else{
             $user_detail = $this->apiLogUser();
         }
-        // $users = ResidentData::where('type', 'resident')
-        //         ->when($role, function ($query, $role) {
-        //             return $query->where('role_id', $role);
-        //         })
-        //         ->get();
-
-        // \Storage::disk('public')->exists('residents/'.$residentdata->image)
-        // \File::exists(public_path('ReportesTodos-5.zip'));
-        // echo \File::delete(public_path('uploads/complaint/162747705311.png'));
 
         if($user_detail->user_level_id < 2){
             $societies = Society::get(['id','code','name']);
-            $residents = ResidentData::where('type', 'resident')->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image','e_pin','m_pin','society_id','pin_verified','landlord_id','type']);
+            $residents = ResidentData::where('type', 'resident')->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image','e_pin','m_pin','society_id','pin_verified','landlord_id','type','membership_id']);
         }elseif($user_detail->user_level_id == 2){
             $societies = Society::whereIn('id', $this->adminSocieties())->get(['id','code','name']);
-            $residents = ResidentData::where('type', 'resident')->whereIn('society_id', $this->adminSocieties())->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image','e_pin','m_pin','society_id','pin_verified','landlord_id','type']);
+            $residents = ResidentData::where('type', 'resident')->whereIn('society_id', $this->adminSocieties())->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image','e_pin','m_pin','society_id','pin_verified','landlord_id','type','membership_id']);
         }elseif($user_detail->user_level_id > 2 && $user_detail->user_level_id < 6){
             $societies = Society::where('id', $user_detail->society_id)->get(['id','code','name']);
-            $residents = ResidentData::where('type', 'resident')->where('society_id', $user_detail->society_id)->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image', 'e_pin','m_pin','society_id','pin_verified','landlord_id','type']);
+            $residents = ResidentData::where('type', 'resident')->where('society_id', $user_detail->society_id)->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image', 'e_pin','m_pin','society_id','pin_verified','landlord_id','type','membership_id']);
         }else{
             $societies = Society::where('id', $user_detail->society_id)->get(['id','code','name']);
-            $residents = ResidentData::where('id', $user_detail->resident_id)->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image', 'e_pin','m_pin','society_id','pin_verified','landlord_id','type']);
+            $residents = ResidentData::where('id', $user_detail->resident_id)->with('society:id,name')->orderBy('id','DESC')->get(['id','name','image', 'e_pin','m_pin','society_id','pin_verified','landlord_id','type','membership_id']);
         }
 
-        // dd($residents->toArray());
+        // dd($residents->toArray());  
         $message = "No Data Found";
         $counts = count($residents);
         if($counts > 0){
@@ -189,7 +180,8 @@ class ResidentDataController extends Controller
         $residentdata = '';
         $is_int = is_numeric($id);
         if($is_int){
-            $residentdata = ResidentData::find($id);
+            $residentdata = ResidentData::with('tenants:id,name,landlord_id,father_name,email,cnic,martial_status,e_pin,m_pin,pin_verified','familes','servents','handymen.handy_type','vehicles.vehicleType','society')->find($id);
+
             $message = "no";
             if($residentdata != ''){
                 $message = "yes";
@@ -197,10 +189,15 @@ class ResidentDataController extends Controller
         }else{
             $message = "Id must bE integer";
         }
-        return response()->json([
-            'message' => $message,
-            'residentdata' => $residentdata
-        ], 200);
+
+        if($this->webLogUser() !=''){
+            return view('residentmanagement.residentdata.residentdetail', compact('residentdata'));
+        }else{
+            return response()->json([
+                'message' => $message,
+                'residentdata' => $residentdata
+            ], 200);
+        }
     }
 
     public function edit($id)

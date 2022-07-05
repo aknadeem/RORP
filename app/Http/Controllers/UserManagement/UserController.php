@@ -293,7 +293,9 @@ class UserController extends Controller
     {
         abort_if(Gate::denies('update-user-management'), Response::HTTP_FORBIDDEN, '403 Permission Denied, You are unauthorized for this page');
 
-        $user_id = Auth::id();
+        $auth_user_id = Auth::id();
+        $user_id = $request->change_user_id ?? '';
+        
         $data = request()->validate([
             'password' => 'bail|required|min:3|confirmed',
         ]);
@@ -303,10 +305,12 @@ class UserController extends Controller
                 'password' => Hash::make($request->password),
             ])
             ->save();
-        Auth::logout();
-        Session::flush();
+        if($auth_user_id == $user_id){
+            Auth::logout();
+            Session::flush();
+        }
         Session::flash('notify', ['type'=>'success','message' => 'Password Updated Successfully']);
-        return redirect()->back();
+        return back();
     }
 
     public function UserPermissions($id)

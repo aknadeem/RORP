@@ -188,7 +188,7 @@
                                 name="department_id" data-live-search="true">
 
                                 <option selected disabled>Select Department</option>
-                                @forelse ($departments as $dep)
+                                @forelse ($forward_departments as $dep)
                                 <option value="{{ $dep->id }}">{{ $dep->name}}</option>
                                 @empty
                                 <option disabled> No Department Found </option>
