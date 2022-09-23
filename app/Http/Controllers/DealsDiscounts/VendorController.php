@@ -34,7 +34,7 @@ class VendorController extends Controller
            $vendors = Vendor::with('society:id,code,name')->orderBy('id','DESC')->get();
            $societies = Society::get(['id','code','name']);
         }
-        
+
         $message = "No Data Found";
         $counts = $vendors->count();
 
@@ -48,7 +48,6 @@ class VendorController extends Controller
         return response()->json([
             'message' => $message,
             'counts' => $counts,
-            'deals' => $deals
         ], 201);
 
     }
@@ -65,10 +64,10 @@ class VendorController extends Controller
             // Admin Only Saw All His Societies data
             $admin_soctities = $this->adminSocieties();
             $societies = Society::whereIn('id', $admin_soctities)->with('sectors')->get();
-        
+
         }else if($user_detail->user_level_id > 2){
             $societies = Society::where('id', $user_detail->society_id)->with('sectors')->get();
-        
+
         }else{
             $societies = Society::with('sectors')->get();
         }
@@ -115,9 +114,9 @@ class VendorController extends Controller
             'address' => $request->address,
             'addedby' => $userId,
         ]);
-        
+
         Session::flash('notify', ['type'=>'success','message' => 'Data created successfully']);
-            
+
         return redirect()->route('vendors.index');
     }
 
@@ -139,7 +138,7 @@ class VendorController extends Controller
         }else{
             $message = "Id must be integer";
         }
-        
+
         return response()->json([
             'message' => $message,
             'vendor' => $vendor
@@ -157,14 +156,14 @@ class VendorController extends Controller
             // Admin Only Saw All His Societies data
             $admin_soctities = $this->adminSocieties();
             $societies = Society::whereIn('id', $admin_soctities)->with('sectors')->get();
-        
+
         }else if($user_detail->user_level_id > 2){
             $societies = Society::where('id', $user_detail->society_id)->with('sectors')->get();
-        
+
         }else{
             $societies = Society::with('sectors')->get();
         }
-        
+
         $vendor = Vendor::find($id);
         return view('dealsdiscounts.vendor.create', compact('vendor','societies'));
     }
@@ -183,7 +182,7 @@ class VendorController extends Controller
             $userId = $api_user->id;
             $user_name = $api_user->name;
         }
-        
+
         $this->validate($request,[
             'society_id' => 'required|integer',
             'title' => 'required|string',
@@ -205,7 +204,7 @@ class VendorController extends Controller
         $message = 'No Data Found';
         $vendor = Vendor::find($id);
         if($vendor !=''){
-        
+
             $vendor = $vendor->update([
                 'society_id' => $request->society_id,
                 'title' => $request->title,
@@ -242,7 +241,7 @@ class VendorController extends Controller
                 $message = "Data Deleted Successfully";
             }
         }else{
-          $message = "Id Must be Integet";  
+          $message = "Id Must be Integet";
         }
 
         if($web_user !=''){

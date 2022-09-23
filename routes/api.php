@@ -45,11 +45,12 @@ Route::group([
     'prefix' => 'dashboard'
 
 ], function ($router) {
-    Route::get('/summary', [HomeController::class, 'dashboardApi']); 
-    // Route::get('/filtercomplaints/{type}', [FiltersDashboardDataController::class, 'getComplaintsForApi']);
+    Route::get('/summary', [HomeController::class, 'dashboardApi']);
+    Route::get('/filtercomplaints/{type}', [FiltersDashboardDataController::class, 'getComplaintsForApi']);
     Route::get('filterservices/{society_id}/{service_type}',[FiltersDashboardDataController::class, 'getServices']);
     Route::get('filtercomplaints/{society_id}/{complaint_type}',[FiltersDashboardDataController::class, 'getComplaints']);
-    // Route::get('/filterservices/{type}', [FiltersDashboardDataController::class, 'getServicesForApi']);   
+
+    // Route::get('/filterservices/{type}', [FiltersDashboardDataController::class, 'getServicesForApi']);
 });
 
 Route::group([
@@ -81,7 +82,7 @@ Route::group([
 	Route::post('/store', [ResidentVehicleController::class, 'store']);
 	Route::get('/myvehicle/{id}', [ResidentVehicleController::class, 'myvehicle']);
 	Route::put('/update/{id}', [ResidentVehicleController::class, 'update']);
-	Route::get('/destroy/{id}', [ResidentVehicleController::class, 'destroy']);   
+	Route::get('/destroy/{id}', [ResidentVehicleController::class, 'destroy']);
 });
 
 Route::group([
@@ -93,8 +94,8 @@ Route::group([
 	Route::post('/store', [ResidentHandyMenController::class, 'store']);
 	Route::get('/myhandymen/{id}', [ResidentHandyMenController::class, 'myhandymen']);
 	Route::put('/update/{id}', [ResidentHandyMenController::class, 'update']);
-	Route::get('/destroy/{id}', [ResidentHandyMenController::class, 'destroy']); 
-	Route::get('/types', [ResidentHandyMenController::class, 'handyServiceTypes']); 
+	Route::get('/destroy/{id}', [ResidentHandyMenController::class, 'destroy']);
+	Route::get('/types', [ResidentHandyMenController::class, 'handyServiceTypes']);
 });
 
 Route::group([
@@ -107,7 +108,7 @@ Route::group([
 	Route::get('/myservent/{id}', [ResidentServentController::class, 'myservent']);
 	Route::put('/update/{id}', [ResidentServentController::class, 'update']);
 	Route::get('/destroy/{id}', [ResidentServentController::class, 'destroy']);
-	Route::get('/types', [ResidentServentController::class, 'serventTypes']);   
+	Route::get('/types', [ResidentServentController::class, 'serventTypes']);
 });
 
 Route::group([
@@ -129,7 +130,7 @@ Route::group([
 	Route::get('/myfamily/{id}', [ResidentFamilyController::class, 'myfamily']);
 	Route::post('/store', [ResidentFamilyController::class, 'store']);
 	Route::put('/update/{id}', [ResidentFamilyController::class, 'update']);
-	Route::get('/destroy/{id}', [ResidentFamilyController::class, 'destroy']);   
+	Route::get('/destroy/{id}', [ResidentFamilyController::class, 'destroy']);
 });
 
 Route::group([
@@ -151,9 +152,9 @@ Route::group([
     'prefix' => 'societymanagement'
 
 ], function ($router) {
-	Route::get('/societies', [SocietyController::class, 'index']); 
-	Route::get('/sectors/{id}', [SocietyController::class, 'getSocietySectors']); 
-      
+	Route::get('/societies', [SocietyController::class, 'index']);
+	Route::get('/sectors/{id}', [SocietyController::class, 'getSocietySectors']);
+
 });
 
 Route::group([
@@ -195,21 +196,21 @@ Route::group([
 ], function ($router) {
 	Route::get('/aboutus', [App\Http\Controllers\Pages\AboutUsController::class, 'index']);
 	Route::get('/aboutus/{id}', [App\Http\Controllers\Pages\AboutUsController::class, 'show']);
-	
+
 	Route::get('/flashnews', [App\Http\Controllers\SocialMedia\NewsController::class, 'getFlashNews']);
-	
+
 	Route::get('/news', [NewsController::class, 'index'])->middleware('auth:api');
 	Route::get('/news/{id}', [NewsController::class, 'show'])->middleware('auth:api');
 	Route::get('/socialmedias', [SocialMediaController::class, 'index'])->middleware('auth:api');
 	Route::get('/socialmedia/{id}', [SocialMediaController::class, 'show'])->middleware('auth:api');
-	Route::get('/events', [EventController::class, 'index']); 
-	Route::get('/event/{id}', [EventController::class, 'show']); 
+	Route::get('/events', [EventController::class, 'index']);
+	Route::get('/event/{id}', [EventController::class, 'show']);
 	Route::get('/twofoursevens', [TwoFourSevenController::class, 'index'])->middleware('auth:api');
 	Route::get('/twofourseven/{id}', [TwoFourSevenController::class, 'show'])->middleware('auth:api');
 	Route::get('/sopslaws', [SopLawController::class, 'index'])->middleware('auth:api');
 	Route::get('/sopslaw/{id}', [SopLawController::class, 'show'])->middleware('auth:api');
 	Route::get('/bylaws', [ByLawController::class, 'index'])->middleware('auth:api');
-	Route::get('/bylaw/{id}', [ByLawController::class, 'show'])->middleware('auth:api');  
+	Route::get('/bylaw/{id}', [ByLawController::class, 'show'])->middleware('auth:api');
 });
 
 Route::group([
@@ -241,7 +242,7 @@ Route::group([
 	Route::post('/mark/read',[SendNotification::class, 'markRead']);
 	Route::get('/create',[SendNotification::class, 'createadminNotification']);
 	Route::post('/store',[SendNotification::class, 'storeadminNotification']);
-	Route::get('/list/{id}',[SendNotification::class, 'notificationList']);   
+	Route::get('/list/{id}',[SendNotification::class, 'notificationList']);
 });
 
 Route::group([
@@ -267,12 +268,12 @@ Route::group([
 	Route::post('/request-smart-service',[ServiceApiController::class, 'requestSmartService'])->middleware('auth:api');
 	Route::post('/request-service',[RequestServiceController::class, 'store'])->middleware('auth:api');
 	Route::get('/request-service-detail/{id}',[RequestServiceController::class, 'show']);
-	
+
 	Route::get('/simple-service-requests/department/{depid}/subdepartment/{subid}',[ServiceApiController::class, 'getSimpleServiceRequestsWithDepartments']);
-	
+
 	Route::get('/smart-service-requests/department/{depid}/subdepartment/{subid}',[ServiceApiController::class, 'getSmartServiceRequestsWithDepartments']);
-	
-	
+
+
 });
 
 Route::group([

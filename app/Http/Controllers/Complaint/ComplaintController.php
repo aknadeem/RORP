@@ -31,13 +31,39 @@ class ComplaintController extends Controller
 {
     use HelperTrait;
     public function index(){
-        abort_if(Gate::denies('view-complaint-management'), Response::HTTP_FORBIDDEN, '403 Permission Denied, You are unauthorized');
 
         if($this->webLogUser() !=''){
             $user_detail = $this->webLogUser();
         }else{
             $user_detail = $this->apiLogUser();
         }
+
+        $user_level_id = $user_detail->user_level_id;
+
+        $complaints = Complaint::with('society:id,code,name','user:id,name,user_level_id','department.hod','subdepartment.asstmanager','reffer')->orderBy('id','DESC')
+            ->when($user_level_id == 2, function ($qry){
+                $qry->whereIn('society_id', $this->adminSocieties());
+            })->when($user_level_id == 3, function ($qry) use ($user_detail){
+                $qry->where('society_id', $user_detail->society_id)
+                    ->whereIn('department_id',$this->hodDepartments());
+            })->when($user_level_id == 4, function ($qry) use ($user_detail){
+                $qry->where('society_id', $user_detail->society_id)
+                    ->whereIn('sub_department_id',$this->managerSubDepartments());
+            })->when($user_level_id == 5, function ($qry) use ($user_detail){
+                $qry->where('society_id', $user_detail->society_id)
+                    ->whereHas('reffer', function ($query) use ($user_detail) {
+                        return $query->where('refer_to', '=', $user_detail->id);
+                    });
+            })->when($user_level_id > 5, function ($qry) use ($user_detail){
+                $qry->where('addedby', $user_detail->id);
+            })->withCasts([
+                'created_at' => 'date:d M, Y'
+            ])->cursorPaginate(10);
+
+        dd($complaints->toArray());
+        abort_if(Gate::denies('view-complaint-management'), Response::HTTP_FORBIDDEN, '403 Permission Denied, You are unauthorized');
+
+
         $current_day = $this->today();
         if($user_detail->user_level_id < 2){
             $departments = Department::whereHas('complaints')->with('subdepartments')->get();
@@ -99,6 +125,60 @@ class ComplaintController extends Controller
         return view('complaints.index', compact('subdep_sups','departments','societies','forward_departments'));
     }
 
+    public function complaintsStack(){
+
+        if($this->webLogUser() !=''){
+            $user_detail = $this->webLogUser();
+        }else{
+            $user_detail = $this->apiLogUser();
+        }
+        $user_level_id = $user_detail->user_level_id;
+
+        $complaints = Complaint::with('society:id,code,name','user:id,name,user_level_id','department.hod','subdepartment.asstmanager','reffer')->orderBy('id','DESC')
+            ->when($user_level_id == 2, function ($qry){
+                $qry->whereIn('society_id', $this->adminSocieties());
+            })->when($user_level_id == 3, function ($qry) use ($user_detail){
+                $qry->where('society_id', $user_detail->society_id)
+                    ->whereIn('department_id',$this->hodDepartments());
+            })->when($user_level_id == 4, function ($qry) use ($user_detail){
+                $qry->where('society_id', $user_detail->society_id)
+                    ->whereIn('sub_department_id',$this->managerSubDepartments());
+            })->when($user_level_id == 5, function ($qry) use ($user_detail){
+                $qry->where('society_id', $user_detail->society_id)
+                    ->whereHas('reffer', function ($query) use ($user_detail) {
+                        return $query->where('refer_to', '=', $user_detail->id);
+                    });
+            })->when($user_level_id > 5, function ($qry) use ($user_detail){
+                $qry->where('addedby', $user_detail->id);
+            })->withCasts([
+                'created_at' => 'date:d M, Y'
+            ])->get();
+
+        $counts = $complaints->count();
+        $inprogress_complaints = 0;
+        $pending_complaints = 0;
+        $resolved_complaints = 0;
+        $message = 'no';
+        if($counts > 0){
+            $message = 'yes';
+            $inprogress_complaints = $complaints->where('complaint_status', '!=','closed')->where('complaint_status', '!=','open')->count();
+            $pending_complaints = $complaints->where('complaint_status', '=','open')->count();
+            $resolved_complaints = $complaints->where('complaint_status', '=','closed')->count();
+        }
+
+        if($this->apiLogUser()){
+            return response()->json([
+                'message' => $message,
+                'total' => $counts,
+                'inprogress_complaints' => $inprogress_complaints,
+                'pending_complaints' => $pending_complaints,
+                'resolved_complaints' => $resolved_complaints,
+                'complaints' => $complaints
+            ], 201);
+        }
+
+    }
+
     public function getComplaintsWithRefresh()
     {
         if($this->webLogUser() !=''){
@@ -107,7 +187,7 @@ class ComplaintController extends Controller
             $user_detail = $this->apiLogUser();
         }
         $user_level_id = $user_detail->user_level_id;
-        $admin_soctities = $this->adminSocieties(); 
+        $admin_soctities = $this->adminSocieties();
 
         $complaints = Complaint::with('society:id,code,name','user:id,name,user_level_id','department.hod','subdepartment.asstmanager','reffer')->orderBy('id','DESC')
         ->when($user_level_id == 2, function ($qry){
@@ -193,7 +273,7 @@ class ComplaintController extends Controller
         }else{
             $user_detail = $this->apiLogUser();
         }
-        
+
         if($user_detail->user_level_id == 2){
             $departments = Department::whereHas('hod')->whereIn('society_id', $this->adminSocieties())->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
         }else if($user_detail->user_level_id == 3){
@@ -204,7 +284,7 @@ class ComplaintController extends Controller
                 $q->whereIn('id', $sub_ids);
             })->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
         }elseif($user_detail->user_level_id == 5){
-            
+
             $sp_visors_subdepartments = array();
             if($user_detail->supervisor_subdepartments->count() > 0){
               foreach ($user_detail->supervisor_subdepartments as $key => $value) {
@@ -216,7 +296,7 @@ class ComplaintController extends Controller
                 $q->whereIn('id', $sp_visors_subdepartments);
             })->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
             }else{
-                $departments = collect();    
+                $departments = collect();
             }
         }else{
             $departments = Department::with('subdepartments','society')->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
@@ -240,9 +320,9 @@ class ComplaintController extends Controller
         ]);
         $userId = \Auth::user()->id;
         /**
-        * Get sub department supervisor 
+        * Get sub department supervisor
         * Count their complaints
-        * Select Supervisor having Minimum Complaints And new Complaint reffer to them 
+        * Select Supervisor having Minimum Complaints And new Complaint reffer to them
         */
 
         $complaint_hods = DepartmentHod::where('department_id',$request->department_id)->get(['id','department_id','hod_id'])->pluck('hod_id')->toArray();
@@ -255,7 +335,7 @@ class ComplaintController extends Controller
         }])
         ->get();
 
-        // dd($supervisors->toArray()); 
+        // dd($supervisors->toArray());
         $refer_to_id = 0;
         if($supervisors->count() > 0){
             $min_val = collect($supervisors)->min('reffer_count');
@@ -317,13 +397,13 @@ class ComplaintController extends Controller
                 ];
 
                 foreach($get_users as $user){
-        
+
                     $user->notify(new \App\Notifications\ComplaintNotification($details));
                     if($user->fcm_token != null){
                         $title_message = 'New Complaint Created';
                         $tokens = array();
                         $tokens[] = $user->fcm_token;
-                        $not_send = $this->sendFCM($title_message, $tokens);  
+                        $not_send = $this->sendFCM($title_message, $tokens);
                     }
                 }
             }
@@ -349,7 +429,7 @@ class ComplaintController extends Controller
                 'complaint' => $complaint
             ], 201);
         }
-        
+
         // dd($complaint->toArray());
         return view('complaints.complaint-detail', compact('complaint'));
     }
@@ -361,7 +441,7 @@ class ComplaintController extends Controller
         }else{
             $user_detail = $this->apiLogUser();
         }
-        
+
         if($user_detail->user_level_id == 2){
             $departments = Department::whereHas('hod')->whereIn('society_id', $this->adminSocieties())->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
         }else if($user_detail->user_level_id == 3){
@@ -383,7 +463,7 @@ class ComplaintController extends Controller
                 $q->whereIn('id', $sp_visors_subdepartments);
             })->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
             }else{
-                $departments = collect();    
+                $departments = collect();
             }
         }else{
             $departments = Department::with('subdepartments','society')->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
@@ -457,7 +537,7 @@ class ComplaintController extends Controller
                 'success' => 'true',
                 'complaint' => $complaint,
             ], 201);
-        } 
+        }
     }
 
     public function WorkingInComplaint(Request $request){
@@ -494,27 +574,27 @@ class ComplaintController extends Controller
         }else{
             $c_status = $request->working_status;
         }
-        
+
         if ($request->working_status == 'close' OR $request->working_status == 'closed') {
             $c_status = 'closed';
         }else{
             $c_status = $request->working_status;
         }
-        
+
         $complaint_log = ComplaintLog::create([
             'complaint_id'=> $complaint->id,
             'status'=> $c_status,
             'comments'=> $request->comments,
             'addedby'=> $userId
         ]);
-        
+
         if ($request->working_status == 're_assign' OR $request->working_status == 'reassign') {
-            
+
             $user = User::where('id',$request->user_id)->first();
-            
+
             $refer_to = $request->user_id;
             $status = 're_assign';
-            
+
             $complaint_refers = ComplaintRefer::create([
                 'complaint_id' =>  $complaint->id,
                 'refer_to' => $refer_to,
@@ -531,15 +611,15 @@ class ComplaintController extends Controller
             ];
 
             $user->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($user->fcm_token !=''){
                 $title_message = $request->comments ?? 'Complaint Status Change Notification';
                 $tokens = array();
                 $tokens[] = $user->fcm_token;
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
         }
-            
+
         if($request->working_status == 'in_process'){
             $details = [
                 'title' => $request->comments,
@@ -548,15 +628,15 @@ class ComplaintController extends Controller
             ];
 
             $complaint_addedby->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($complaint_addedby->fcm_token !=''){
                 $title_message = $request->comments ?? 'Complaint Status Change Notification';
                 $tokens = array();
                 $tokens[] = $complaint_addedby->fcm_token;
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
         }
-        
+
         if ($request->working_status == 'incorrect') {
             $complaintRefer = ComplaintRefer::where('complaint_id',$request->complaint_id)->where('refer_to',$userId)->orderBy('id', 'DESC')->first();
             if($complaintRefer != ''){
@@ -569,22 +649,22 @@ class ComplaintController extends Controller
                 'refer_to' => $dep_manager->manager_id,
                 'refer_by' => $userId,
             ]);
-            
+
             $details = [
                 'title' => $request->comments,
                 'by' => $user_name,
                 'complaint_id' => $request->complaint_id,
             ];
-    
+
             $user->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($user->fcm_token !=''){
                 $title_message = $request->comments ?? 'Complaint Status Change Notification';
                 $tokens = array();
                 $tokens[] = $user->fcm_token;
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
-            
+
         } elseif ($request->working_status == 'completed') {
                 $complaint_refers = ComplaintRefer::create([
                     'complaint_id' =>  $complaint->id,
@@ -599,13 +679,13 @@ class ComplaintController extends Controller
 
             $complaint_addedby->notify(new \App\Notifications\ComplaintNotification($details));
             $user->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($complaint_addedby->fcm_token !='' && $user->fcm_token !=''){
                 $tokens = array($complaint_addedby->fcm_token,$user->fcm_token);
                 $title_message = $request->comments ?? 'Complaint Status Change Notification';
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
-            
+
             $email_data = array(
                 'sentto' => $complaint_addedby->email,
                 'name' => $complaint_addedby->name,
@@ -633,11 +713,11 @@ class ComplaintController extends Controller
                 'success' => 'true',
                 'complaint_status' => $request->working_status,
             ], 201);
-        }        
+        }
     }
 
     public function complaintedit($id){
-        
+
         abort_if(Gate::denies('update-complaint-management'), Response::HTTP_FORBIDDEN, '403 Permission Denied, You are unauthorized');
 
         if($this->webLogUser() !=''){
@@ -645,24 +725,24 @@ class ComplaintController extends Controller
         }else{
             $user_detail = $this->apiLogUser();
         }
-        
+
         if($user_detail->user_level_id == 2){
             $departments = Department::whereHas('hod')->whereIn('society_id', $this->adminSocieties())->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
-            
+
             $subdepartments = SubDepartment::whereIn('society_id', $this->adminSocieties())->get();
         }else if($user_detail->user_level_id == 3){
             $departments = Department::whereHas('hod')->whereIn('id', $this->hodDepartments())->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
-            
+
             $subdepartments = SubDepartment::whereIn('department_id', $this->hodDepartments())->get();
         }else if($user_detail->user_level_id == 4){
             $sub_ids = $this->managerSubDepartments();
            $departments = Department::where('is_service', 1)->where('society_id',$user_detail->society_id)->whereHas('subdepartments', function($q) use ($sub_ids){
                 $q->whereIn('id', $sub_ids);
             })->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
-            
+
             $subdepartments = SubDepartment::whereIn('id', $sub_ids)->get();
         }elseif($user_detail->user_level_id == 5){
-            
+
             $sp_visors_subdepartments = array();
             if($user_detail->supervisor_subdepartments->count() > 0){
               foreach ($user_detail->supervisor_subdepartments as $key => $value) {
@@ -673,12 +753,12 @@ class ComplaintController extends Controller
                 $departments = Department::where('is_service', 1)->where('society_id',$user_detail->society_id)->whereHas('subdepartments', function($q) use ($sp_visors_subdepartments){
                 $q->whereIn('id', $sp_visors_subdepartments);
             })->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
-            
+
             $subdepartments = SubDepartment::whereIn('id', $sp_visors_subdepartments)->get();
-            
+
             }else{
-                $departments = collect();    
-                $subdepartments = collect();    
+                $departments = collect();
+                $subdepartments = collect();
             }
         }else{
             $departments = Department::with('subdepartments','society')->with('subdepartments:id,name,department_id')->get(['id','name','society_id']);
@@ -705,13 +785,13 @@ class ComplaintController extends Controller
             $userId = $api_user->id;
             $user_name = $api_user->name;
         }
-        
+
         if ($request->working_status == 'close' OR $request->working_status == 'closed') {
             $c_status = 'closed';
         }else{
             $c_status = $request->working_status;
         }
-        
+
         $complaint = Complaint::where('id',$request->complaint_id)->firstOrFail();
         if($request->working_status == 'closed'){
             $caddedBy = $complaint->addedby;
@@ -732,20 +812,20 @@ class ComplaintController extends Controller
                 'by' => $user_name,
                 'complaint_id' => $request->complaint_id,
             ];
-            
+
             $complaint_update = $complaint->update([
                 'complaint_status'=> $c_status
             ]);
-            
+
             $user->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($user->fcm_token !=''){
                 $title_message = $request->comments ?? 'Complaint Status Change Notification';
                 $tokens = array();
                 $tokens[] = $user->fcm_token;
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
-            
+
             $message = 'no';
             if($web_user != ''){
                 Session::flash('notify', ['type'=>'success','message' => 'Data created successfully']);
@@ -767,21 +847,21 @@ class ComplaintController extends Controller
                 $find_id = $request->user_id;
             }
             $user = User::where('id',$find_id)->first();
-            
+
             $complaint_update = $complaint->update([
                 'complaint_status'=> $c_status
             ]);
-            
+
             if($complaintRefer){
                 $complaint_refer_update = $complaintRefer->update([
                     'is_active'=> 0,
                 ]);
             }
-            
+
             if($request->working_status == 'change_deparment'){
                 $refer_to = $departmentHod->hod_id;
                 $status = 'change_deparment';
-            } 
+            }
             if ($request->working_status == 're_assign') {
                 $refer_to = $request->user_id;
                 $status = 're_assign';
@@ -791,7 +871,7 @@ class ComplaintController extends Controller
                 'refer_to' => $refer_to,
                 'refer_by' => $userId,
             ]);
-            
+
             $complaint_logs = ComplaintLog::create([
                 'complaint_id' => $complaint->id,
                 'status'=> $c_status,
@@ -806,12 +886,12 @@ class ComplaintController extends Controller
             ];
 
             $user->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($user->fcm_token !=''){
                 $title_message = $request->comments ?? 'Complaint Status Change Notification';
                 $tokens = array();
                 $tokens[] = $user->fcm_token;
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
 
             $message = 'no';
@@ -825,7 +905,7 @@ class ComplaintController extends Controller
                     'success' => 'true',
                     'complaint_status' => $request->working_status,
                 ], 201);
-            } 
+            }
         }
 
     }
@@ -855,17 +935,17 @@ class ComplaintController extends Controller
             $complaint_update = $complaint->update([
                 'complaint_status'=> 'closed'
             ]);
-            
+
             $complaint_logs = ComplaintLog::create([
                 'complaint_id' => $complaint->id,
                 'status'=> 'closed',
                 'comments' => $request->comments,
                 'addedby' => $userId,
             ]);
-            
+
             // Get Complaint Reffer to Inactive from last supervisor
             $complaintRefer = ComplaintRefer::where('complaint_id',$request->complaint_id)->orderBy('id', 'DESC')->first();
-            
+
             // complaint inactive from last supervisor
             if($complaintRefer != ''){
                 $refer_update = $complaintRefer->update([
@@ -888,7 +968,7 @@ class ComplaintController extends Controller
 
             $manager = $complaint->subdepartment->asstmanager->manager_id;
             $user = User::where('id',$manager)->first();
-            
+
             // complaint inactive from last supervisor
             $complaintRefer = ComplaintRefer::where('complaint_id',$request->complaint_id)->update([
                     'is_active'=> 0
@@ -902,21 +982,21 @@ class ComplaintController extends Controller
                     'refer_to' => $asst_manager_id,
                     'refer_by' => $userId,
                 ]);
-                
+
                 $details = [
                     'title' => $request->feedback_status.'<br>'.$request->comments,
                     'by' => $user_name,
                     'complaint_id' => $request->complaint_id,
                 ];
                 $user->notify(new \App\Notifications\ComplaintNotification($details));
-                
+
                 if($user->fcm_token !=''){
                     $title_message = $request->comments ?? 'Complaint Feedback Notification';
                     $tokens = array();
                     $tokens[] = $user->fcm_token;
-                    $this->sendFCM($title_message, $tokens);  
+                    $this->sendFCM($title_message, $tokens);
                 }
-            } 
+            }
         }
 
         $message = 'no';
@@ -931,7 +1011,7 @@ class ComplaintController extends Controller
                 'success' => 'true',
                 'complaint_status' => $request->working_status,
             ], 201);
-        } 
+        }
     }
 
     public function apiComplaint(Request $request) {
@@ -945,14 +1025,14 @@ class ComplaintController extends Controller
             'sub_department_id' => 'required|integer',
             'reference_id' => 'nullable',
         ]);
-        
+
         $reference_id = null;
         if($request->reference_id == 'Please Select' OR $request->reference_id == 0){
             $reference_id = null;
         }else{
            $reference_id = $request->reference_id;
         }
-        
+
         if($validator->fails()){
             return response()->json($validator->errors()->toJson(), 400);
         }
@@ -1015,14 +1095,14 @@ class ComplaintController extends Controller
                         'complaint_id' => $complaint->id,
                     ];
             $user->notify(new \App\Notifications\ComplaintNotification($details));
-            
+
             if($user->fcm_token !=''){
                 $title_message = $request->complaint_title ?? 'Complaint Creation Notification';
                 $tokens = array();
                 $tokens[] = $user->fcm_token;
-                $this->sendFCM($title_message, $tokens);  
+                $this->sendFCM($title_message, $tokens);
             }
-            
+
             $complaint_logs = ComplaintLog::create([
                 'complaint_id' => $complaint->id,
                 'comments' => 'complaint created',
@@ -1110,7 +1190,7 @@ class ComplaintController extends Controller
 
         ], 201);
     }
-    
+
     public function updateTAT(Request $request, $id)
     {
         abort_if(Gate::denies('update-tat-complaint-management'), Response::HTTP_FORBIDDEN, '403 Permission Denied, You are unauthorized');
@@ -1132,7 +1212,7 @@ class ComplaintController extends Controller
             $today_dateTime = $this->today();
             if($request->ta_time != ''){
                 $expire_time = $this->taTimeExpire($request->ta_time, $today_dateTime);
-                
+
             }else{
                 $expire_time = $complaint->expire_time;
             }
@@ -1141,11 +1221,11 @@ class ComplaintController extends Controller
             if($complaint !=''){
                 $complaint->ta_time = $request->ta_time;
                 $complaint->expire_time = $expire_time;
-                
+
                 if($expire_time > $current_daytime){
                     $complaint->is_expired = 0;
                 }
-                
+
                 $complaint->updatedby = $user_detail->id;
                 $complaint->updated_at = $this->currentDateTime();
                 $complaint->save();
@@ -1159,9 +1239,9 @@ class ComplaintController extends Controller
 
             return response()->json([ 'success' => 'yes', 'message' =>'Turnaround time(TAT) has been updated'
             ], 200);
-        }  
+        }
     }
-    
+
     public function taTimeExpire($input, $today_dateTime){
         $exp_time = '';
         $time = '';

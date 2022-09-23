@@ -48,7 +48,7 @@ class UserController extends Controller
         if($user_detail->user_level_id < 2){
             $societies = Society::cursor();
             $users = User::with('userlevel.permissions','permissions','society:id,code,name')->where('user_level_id','<',6)->cursor();
-            
+
             // dd($users->toArray());
         }elseif($user_detail->user_level_id == 2){
             $societies = Society::whereIn('id', $this->adminSocieties())->cursor();
@@ -134,7 +134,7 @@ class UserController extends Controller
     }
 
     public function show($id)
-    { 
+    {
         abort_if(Gate::denies('view-user-management'), Response::HTTP_FORBIDDEN, '403 Permission Denied, You are unauthorized for this page');
 
         $user = User::with('societies','society:id,code,name','sector:id,sector_name,society_id','profile','departments:id,department_id,hod_id')->find($id,['id','unique_id','resident_id','user_level_id','name','cnic','email','contact_no','is_active','society_id','society_sector_id','gender','address','fcm_token']);
@@ -295,7 +295,7 @@ class UserController extends Controller
 
         $auth_user_id = Auth::id();
         $user_id = $request->change_user_id ?? '';
-        
+
         $data = request()->validate([
             'password' => 'bail|required|min:3|confirmed',
         ]);
@@ -321,4 +321,6 @@ class UserController extends Controller
         $permissions = $user->permissions->groupBy('code_name');
         return view('usermanagement.user.user-permissions', compact('user','permissions'));
     }
+
+
 }

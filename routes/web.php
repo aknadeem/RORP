@@ -1,6 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\CustomUserForInvoiceController;
+use App\Models\Society;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\UserLoginController;
@@ -32,7 +33,6 @@ use App\Http\Controllers\ServiceManagement\ServiceController;
 use App\Http\Controllers\SocietyManagement\SocietyController;
 use App\Http\Controllers\UserManagement\PermissionController;
 use App\Http\Controllers\UserManagement\DesginationController;
-// use App\Http\Controllers\DealsDiscounts\DealCategoryController;
 use App\Http\Controllers\UserManagement\UserProfileController;
 use App\Http\Controllers\SocietyManagement\SocietySosController;
 use App\Http\Controllers\DealsDiscounts\DealsDiscountsController;
@@ -61,12 +61,20 @@ Auth::routes();
 
 
 
-// Route::get('/', function () {
-// 	return view('auth.password.email');
-// });
+ Route::get('custom-user/create-invoice', function () {
+     $societies = Society::get();
+ 	return view('custom-user-data.create', compact('societies'));
+ });
 
-Route::post('customlogin',[UserLoginController::class, 'Loginuser'])->name('customlogin');	
-Route::post('designation',[DesginationController::class, 'store'])->name('designation.store');	
+Route::group(['prefix' => '/customer-user-invoice', 'middleware' => 'auth'], function(){
+    Route::get('user-data',[CustomUserForInvoiceController::class, 'getCustomUser'])->name('getCustomUser');
+    Route::get('custom-user-form',[CustomUserForInvoiceController::class, 'customUserForm'])->name('customUserForm');
+    Route::post('store-user-data',[CustomUserForInvoiceController::class, 'storeCustomUser'])->name('storeCustomUser');
+});
+
+Route::post('customlogin',[UserLoginController::class, 'Loginuser'])->name('customlogin');
+Route::post('customlogin',[UserLoginController::class, 'Loginuser'])->name('customlogin');
+Route::post('designation',[DesginationController::class, 'store'])->name('designation.store');
 Route::get('/send-signup-otp/{to}/sms/{pin}', [HomeController::class, 'smsApi'])->name('smsApi');
 Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 	Route::get('/', [HomeController::class, 'index'])->name('home.index');
@@ -125,7 +133,7 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 		Route::get('/sub/get-submodules/{id}', [ModuleController::class, 'getSubmodules'])->name('sub.getsubmodules');
 	});
 
-	
+
 	Route::group(['prefix' => '/media', 'middleware' => 'can:view-social-management'], function(){
 		Route::resource('socialmedia', SocialMediaController::class);
 		Route::resource('news', NewsController::class);
@@ -135,20 +143,20 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 		Route::resource('event', EventController::class);
 	});
 	Route::group(['prefix' => '/pages', 'middleware' => 'can:view-pages'], function(){
-	    
+
 	    Route::post('/upload-sop-attachment',[SopLawController::class, 'uploadAttachment'])->name('uploadsop.attachment');
 		Route::post('/upload-bylaw-attachment',[ByLawController::class, 'uploadAttachment'])->name('uploadbylaw.attachment');
-		
+
 		Route::delete('/delete-bylaw-attachment/{id}',[ByLawController::class, 'deleteAttachment'])->name('deletebylaw_attachment');
 		Route::delete('/delete-sop-attachment/{id}',[SopLawController::class, 'deleteAttachment'])->name('deletesop_attachment');
 		Route::delete('/delete-twofour-attachment/{id}',[TwoFourSevenController::class, 'deleteAttachment'])->name('deletetwofour_attachment');
-		
+
 		Route::post('/upload-twofour-attachment',[TwoFourSevenController::class, 'uploadAttachment'])->name('uploadtwofour.attachment');
-		
+
 		Route::get('/filter/bylaw',[ByLawController::class, 'filterWithSociety'])->name('bylaw.filter');
 		Route::get('/sop/filter',[SopLawController::class, 'filterWithSociety'])->name('sop.filter');
 		Route::get('/twofour/filter',[TwoFourSevenController::class, 'filterWithSociety'])->name('twofours_filter');
-		
+
 		Route::resource('twofour', TwoFourSevenController::class);
 		Route::resource('contactus', ContactUsController::class);
 		Route::resource('sops', SopLawController::class);
@@ -180,7 +188,7 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 	// complaint management module
 	Route::group(['prefix' => '/complaint', 'middleware' => 'can:view-complaint-management'], function(){
 	    Route::post('tat/update/{id}',[ComplaintController::class, 'updateTAT'])->name('complaint.updatetat');
-		
+
 		Route::get('getComplaintsWithRefresh',[ComplaintController::class, 'getComplaintsWithRefresh'])->name('getComplaintsWithRefresh');
 
 		//Update complaint Status By Supervisor
@@ -191,19 +199,19 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 		// Complaint Refer Controller Routes//
 
 		Route::resource('complaints', ComplaintController::class);
-		
+
 		Route::post('complaint-internal-log',[ComplaintReferController::class, 'complaintInternalLog'])->name('store.complaint_internal_log');
-		
+
 		Route::resource('complaintrefers', ComplaintReferController::class);
-		
+
 		Route::get('filter/{society_id}/status/{complaint_type}',[FiltersDashboardDataController::class, 'getComplaints'])->name('filter.complaints');
 	});
 
 	// Service management module
 	Route::group(['prefix' => '/ssm', 'middleware' => 'can:view-service-management'], function(){
-	    
+
 	    Route::post('request-service-internal-log',[RequestServiceController::class, 'storeInternalLog'])->name('store.service_internal_log');
-	    
+
 		Route::resource('servicetypes', ServiceTypeController::class);
 		Route::resource('subtypes', ServiceSubTypeController::class);
 		Route::resource('services', ServiceController::class);
@@ -221,7 +229,7 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 		]);
 		Route::resource('servicedevices', ServiceDeviceController::class);
 		Route::get('/smart-service-request',[SmartServiceRequestController::class, 'index'])->name('smr.index');
-		
+
 		Route::get('filter/{society_id}/status/{service_type}',[FiltersDashboardDataController::class, 'getServices'])->name('filter.services');
 	});
 
@@ -238,10 +246,10 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 		Route::resource('invoice', InvoiceController::class);
 		Route::post('/custom-invoice/post',[CustomInvoiceController::class, 'addPayment'])->name('custominvoice.payment');
 		Route::resource('custominvoice', CustomInvoiceController::class);
-		
+
 		Route::resource('imposedfine', ImposedFineController::class);
 	});
-	
+
 	// Fine & Planties
 	Route::group(['prefix' => '/fines&planties', 'middleware' => 'can:view-fine-penalties'], function(){
 		// addPayment
@@ -253,12 +261,12 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
 	Route::group(['prefix' => '/taxes'], function(){
 		Route::post('/store-tax',[TaxController::class, 'store'])->name('taxes.store');;
 	});
-	
+
 	Route::group(['prefix' => '/quick-complaints'], function(){
 		Route::get('/subdepartment/{id}',[QuickComplaintController::class, 'getWithSubdepartment'])->name('department.quick');
 		Route::resource('qkcomplaints', QuickComplaintController::class);
 	});
-	
+
 	Route::group(['prefix' => '/incident', 'middleware' => 'can:view-incident-reporting'], function(){
 		Route::resource('reports', IncidentReportController::class);
 	});
@@ -278,13 +286,13 @@ Route::group(['prefix' => '/', 'middleware' => 'auth'], function(){
             'update'
         ]);
 
-		
+
 		Route::post('/request-depart-service/update-status',[RequestDepartServiceController::class, 'UpdateRequestStatus'])->name('request_depart_service_status');
 
 		Route::post('/depart-service/update-status/{id}',[RequestDepartServiceController::class, 'storeinternalLogs'])->name('depart_service.internalLogs');
 
 		Route::get('/get-sent-requests',[RequestDepartServiceController::class, 'getSentRequests'])->name('getSentRequests');
-		
+
 		Route::get('/get-received-requests',[RequestDepartServiceController::class, 'getReceivedRequests'])->name('getReceivedRequests');
 
 		Route::resource('request_depart_service', RequestDepartServiceController::class);
